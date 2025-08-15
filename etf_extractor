@@ -1,0 +1,158 @@
+import pandas as pd
+import logging
+from datetime import datetime
+import os
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+def extract_performance_data():
+    """
+    Extract performance data from 9 iShares ETF Excel files and consolidate into one DataFrame
+    """
+    
+    # List of file names
+    file_names = [
+        "iShares-Core-Dividend-Growth-ETF_fund.xlsx",
+        "iShares-MSCI-USA-Momentum-Factor-ETF_fund.xlsx", 
+        "iShares-SP-500-Value-ETF_fund.xlsx",
+        "iShares-Asia-50-ETF_fund.xlsx",
+        "iShares-MSCI-USA-Quality-GARP-ETF_fund.xlsx",
+        "iShares-MSCI-EAFE-Min-Vol-Factor-ETF_fund.xlsx",
+        "iShares-Edge-MSCI-World-Momentum-Factor-UCITS-ETF-USD-Acc_fund.xlsx",
+        "iShares-MSCI-USA-Min-Vol-Factor-ETF_fund.xlsx",
+        "iShares-Edge-MSCI-Europe-Momentum-Factor-UCITS-ETF-EUR-Acc_fund.xlsx"
+    ]
+    
+    # Dictionary to store data from each file
+    all_data = {}
+    
+    # Process each file
+    for file_name in file_names:
+        try:
+            logger.info(f"Processing file: {file_name}")
+            
+            # Check if file exists
+            if not os.path.exists(file_name):
+                logger.warning(f"File not found: {file_name}")
+                continue
+            
+            # Read Excel file
+            try:
+                excel_file = pd.ExcelFile(file_name, engine='openpyxl')
+            except Exception as e:
+                logger.error(f"Cannot read Excel file {file_name}: {str(e)}")
+                continue
+            
+            # Check if 'Performance' sheet exists
+            if 'Performance' not in excel_file.sheet_names:
+                logger.warning(f"'Performance' sheet not found in {file_name}")
+                continue
+            
+            # Read the Performance sheet
+            try:
+                # Read from row 4 (0-indexed) which corresponds to row 5 in Excel
+                df = pd.read_excel(file_name, sheet_name='Performance', engine='openpyxl', 
+                                 header=4, usecols=[0, 1])
+                
+                # Check if we have the expected columns
+                expected_cols = ['Month End Date', 'Monthly Total (NAV) Return']
+                if not all(col in df.columns for col in expected_cols):
+                    logger.warning(f"Expected columns not found in {file_name}. Found: {list(df.columns)}")
+                    continue
+                
+                # Clean the data - remove any completely empty rows
+                df = df.dropna(how='all')
+                
+                # Convert dates from "Oct 31, 2014" format to "31-10-2014"
+                def convert_date(date_str):
+                    try:
+                        if pd.isna(date_str):
+                            return None
+                        # Parse the date and convert to DD-MM-YYYY format
+                        parsed_date = pd.to_datetime(date_str)
+                        return parsed_date.strftime('%d-%m-%Y')
+                    except:
+                        logger.warning(f"Could not parse date: {date_str} in {file_name}")
+                        return None
+                
+                df['Date'] = df['Month End Date'].apply(convert_date)
+                
+                # Clean fund name for column naming (remove file extension and simplify)
+                fund_name = file_name.replace('.xlsx', '').replace('iShares-', '').replace('_fund', '')
+                
+                # Store the data with cleaned fund name as column
+                df_clean = df[['Date', 'Monthly Total (NAV) Return']].copy()
+                df_clean = df_clean.dropna(subset=['Date'])  # Remove rows with invalid dates
+                df_clean.columns = ['Date', fund_name]
+                
+                # Convert returns to numeric, handling any text values
+                df_clean[fund_name] = pd.to_numeric(df_clean[fund_name], errors='coerce')
+                
+                all_data[fund_name] = df_clean
+                logger.info(f"Successfully extracted {len(df_clean)} records from {file_name}")
+                
+            except Exception as e:
+                logger.error(f"Error processing data from {file_name}: {str(e)}")
+                continue
+                
+        except Exception as e:
+            logger.error(f"Unexpected error processing {file_name}: {str(e)}")
+            continue
+    
+    # Consolidate all data
+    if not all_data:
+        logger.error("No data was successfully extracted from any files")
+        return None
+    
+    logger.info(f"Successfully processed {len(all_data)} files")
+    
+    # Merge all dataframes on Date
+    consolidated_df = None
+    for fund_name, df in all_data.items():
+        if consolidated_df is None:
+            consolidated_df = df
+        else:
+            consolidated_df = pd.merge(consolidated_df, df, on='Date', how='outer')
+    
+    # Sort by date
+    consolidated_df['Date_sort'] = pd.to_datetime(consolidated_df['Date'], format='%d-%m-%Y')
+    consolidated_df = consolidated_df.sort_values('Date_sort').drop('Date_sort', axis=1)
+    
+    logger.info(f"Final consolidated dataset has {len(consolidated_df)} rows and {len(consolidated_df.columns)} columns")
+    
+    return consolidated_df
+
+def main():
+    """
+    Main function to extract data and save to CSV
+    """
+    logger.info("Starting ETF performance data extraction...")
+    
+    # Extract the data
+    result_df = extract_performance_data()
+    
+    if result_df is not None:
+        # Save to CSV
+        output_file = 'consolidated_etf_performance.csv'
+        result_df.to_csv(output_file, index=False)
+        logger.info(f"Data successfully saved to {output_file}")
+        
+        # Print summary
+        print(f"\n--- EXTRACTION SUMMARY ---")
+        print(f"Total rows: {len(result_df)}")
+        print(f"Date range: {result_df['Date'].min()} to {result_df['Date'].max()}")
+        print(f"Funds processed: {len(result_df.columns) - 1}")
+        print(f"Fund names: {list(result_df.columns[1:])}")
+        print(f"Output saved to: {output_file}")
+        
+        # Show first few rows
+        print(f"\nFirst 5 rows of data:")
+        print(result_df.head())
+        
+    else:
+        logger.error("No data could be extracted. Please check the log messages above.")
+
+if __name__ == "__main__":
+    main()
