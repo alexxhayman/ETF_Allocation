@@ -1,0 +1,9 @@
+Period,Economic_Regime,Sharpe_Ratio,Expected_Return,Primary_ETF_1,Allocation_1,Primary_ETF_2,Allocation_2,Primary_ETF_3,Allocation_3,Primary_ETF_4,Allocation_4,Primary_ETF_5,Allocation_5,Primary_ETF_6,Allocation_6,Performance_Rank,Strategy_Notes
+Pre-GARP,Rising Growth Falling Inflation,0.79,122.7%,EAFE_MinVol,25.0%,USA_MinVol,25.0%,Europe_Momentum_EUR,23.6%,USA_Momentum,13.4%,Europe_Momentum_USD,13.0%,,3,Balanced momentum + defensive
+Pre-GARP,Slowing Growth Rising Inflation,0.36,85.0%,USA_Momentum,25.0%,World_Momentum,25.0%,USA_MinVol,25.0%,EAFE_MinVol,25.0%,,,,5,Equal-weight momentum + defensive
+Pre-GARP,Slowing Growth Falling Inflation,0.12,57.5%,SP500_Value,25.0%,USA_MinVol,25.0%,Europe_Momentum_EUR,25.0%,Dividend_Growth,25.0%,,,,7,Defensive with value tilt
+Pre-GARP,Rising Growth Rising Inflation,0.88,257.8%,Dividend_Growth,25.0%,USA_Momentum,25.0%,SP500_Value,25.0%,Asia_50,25.0%,,,,2,Growth + value with inflation protection
+Post-GARP,Rising Growth Falling Inflation,0.28,126.7%,USA_Momentum,25.0%,USA_MinVol,25.0%,EAFE_MinVol,19.6%,SP500_Value,16.8%,Asia_50,11.3%,World_Momentum,2.3%,6,Diversified with US tilt
+Post-GARP,Slowing Growth Rising Inflation,-0.21,-89.3%,Asia_50,25.0%,Europe_Momentum_EUR,25.0%,Europe_Momentum_USD,25.0%,Dividend_Growth,25.0%,,,,8,International focus (AVOID - negative returns)
+Post-GARP,Slowing Growth Falling Inflation,1.17,400.6%,Europe_Momentum_EUR,25.0%,USA_GARP,25.0%,USA_Momentum,21.5%,Europe_Momentum_USD,20.6%,World_Momentum,7.8%,,1,Growth-focused with quality tilt (BEST)
+Post-GARP,Rising Growth Rising Inflation,0.41,187.1%,Europe_Momentum_EUR,25.0%,USA_GARP,25.0%,USA_MinVol,25.0%,Dividend_Growth,25.0%,,,,4,Balanced growth + defensive
