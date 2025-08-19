@@ -51,7 +51,7 @@ def classify_economic_regimes(csv_file_path, lookback_periods=3):
         
         # Create regime summary
         regime_summary = df['Regime'].value_counts()
-        print("📊 Economic Regime Distribution:")
+        print("Economic Regime Distribution:")
         print("=" * 40)
         for regime, count in regime_summary.items():
             pct = (count / len(df)) * 100
@@ -59,7 +59,7 @@ def classify_economic_regimes(csv_file_path, lookback_periods=3):
         
         # Recent regime analysis
         recent_data = df.tail(6)  # Last 6 periods
-        print(f"\n🔍 Recent Regime History (Last 6 periods):")
+        print(f"\nRecent Regime History (Last 6 periods):")
         print("=" * 50)
         for _, row in recent_data.iterrows():
             date_str = row['Date'].strftime('%Y-%m')
@@ -68,12 +68,12 @@ def classify_economic_regimes(csv_file_path, lookback_periods=3):
         return df
         
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"Error: {e}")
         return None
 
 def visualize_regimes(df, save_plot=True):
     """
-    Create visualizations of the economic regimes.
+    Create visualizations of the economic regimes with timeline bands and pie chart.
     """
     
     # Define colors for each regime
@@ -85,65 +85,113 @@ def visualize_regimes(df, save_plot=True):
         'Insufficient Data': '#D3D3D3'  # Light Gray
     }
     
-    # Create subplot layout
-    fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(15, 12))
-    fig.suptitle('Economic Regime Analysis', fontsize=16, fontweight='bold')
+    # Create subplot layout - one large timeline and one pie chart
+    fig = plt.figure(figsize=(16, 10))
+    gs = fig.add_gridspec(2, 3, height_ratios=[3, 1], width_ratios=[2, 2, 1])
     
-    # 1. Time series with regime coloring
-    for regime in df['Regime'].unique():
-        if regime != 'Insufficient Data':
-            regime_data = df[df['Regime'] == regime]
-            ax1.scatter(regime_data['Date'], regime_data['US_GDP_QoQ_Ann'], 
-                       c=regime_colors[regime], label=regime, alpha=0.7, s=50)
+    # Main timeline plot spanning top row
+    ax_main = fig.add_subplot(gs[0, :])
     
-    ax1.set_title('GDP Growth by Regime Over Time')
-    ax1.set_ylabel('GDP QoQ Annualized (%)')
-    ax1.legend()
-    ax1.grid(True, alpha=0.3)
+    # Create regime timeline with bands
+    df_clean = df[df['Regime'] != 'Insufficient Data'].copy()
     
-    # 2. Inflation by regime
-    for regime in df['Regime'].unique():
-        if regime != 'Insufficient Data':
-            regime_data = df[df['Regime'] == regime]
-            ax2.scatter(regime_data['Date'], regime_data['PCE_Prices'], 
-                       c=regime_colors[regime], label=regime, alpha=0.7, s=50)
+    # Create a numeric mapping for regimes for plotting bands
+    regime_mapping = {
+        'Rising Growth, Falling Inflation': 3,
+        'Rising Growth, Rising Inflation': 2, 
+        'Slowing Growth, Rising Inflation': 1,
+        'Slowing Growth, Falling Inflation': 0
+    }
     
-    ax2.set_title('Inflation by Regime Over Time')
-    ax2.set_ylabel('PCE Prices (%)')
-    ax2.legend()
-    ax2.grid(True, alpha=0.3)
+    df_clean['Regime_Numeric'] = df_clean['Regime'].map(regime_mapping)
     
-    # 3. Regime scatter plot
-    for regime in df['Regime'].unique():
-        if regime != 'Insufficient Data':
-            regime_data = df[df['Regime'] == regime]
-            ax3.scatter(regime_data['US_GDP_QoQ_Ann'], regime_data['PCE_Prices'],
-                       c=regime_colors[regime], label=regime, alpha=0.7, s=60)
+    # Plot the regime bands
+    for i, (date, regime) in enumerate(zip(df_clean['Date'], df_clean['Regime'])):
+        if i < len(df_clean) - 1:
+            next_date = df_clean.iloc[i + 1]['Date']
+            y_pos = regime_mapping[regime]
+            ax_main.barh(y_pos, (next_date - date).days, left=date, height=0.8, 
+                        color=regime_colors[regime], alpha=0.7, edgecolor='white', linewidth=0.5)
     
-    ax3.axhline(y=df['PCE_Prices'].median(), color='gray', linestyle='--', alpha=0.5)
-    ax3.axvline(x=df['US_GDP_QoQ_Ann'].median(), color='gray', linestyle='--', alpha=0.5)
-    ax3.set_xlabel('GDP QoQ Annualized (%)')
-    ax3.set_ylabel('PCE Prices (%)')
-    ax3.set_title('Growth vs Inflation Regime Map')
-    ax3.legend()
-    ax3.grid(True, alpha=0.3)
+    # Format the main timeline
+    ax_main.set_ylim(-0.5, 3.5)
+    ax_main.set_yticks([0, 1, 2, 3])
+    ax_main.set_yticklabels([
+        'Slowing Growth,\nFalling Inflation',
+        'Slowing Growth,\nRising Inflation', 
+        'Rising Growth,\nRising Inflation',
+        'Rising Growth,\nFalling Inflation'
+    ], fontsize=10)
     
-    # 4. Regime duration analysis
-    regime_counts = df['Regime'].value_counts()
-    valid_regimes = regime_counts[regime_counts.index != 'Insufficient Data']
-    colors = [regime_colors[regime] for regime in valid_regimes.index]
+    ax_main.set_xlabel('Year', fontsize=12)
+    ax_main.set_title('Economic Regimes Timeline', fontsize=16, fontweight='bold', pad=20)
+    ax_main.grid(True, axis='x', alpha=0.3)
     
-    ax4.pie(valid_regimes.values, labels=valid_regimes.index, autopct='%1.1f%%',
-           colors=colors, startangle=90)
-    ax4.set_title('Regime Distribution')
+    # Add regime color legend
+    handles = [plt.Rectangle((0,0),1,1, color=regime_colors[regime], alpha=0.7) 
+              for regime in ['Rising Growth, Falling Inflation', 'Rising Growth, Rising Inflation',
+                           'Slowing Growth, Rising Inflation', 'Slowing Growth, Falling Inflation']]
+    labels = ['Rising Growth, Falling Inflation', 'Rising Growth, Rising Inflation',
+              'Slowing Growth, Rising Inflation', 'Slowing Growth, Falling Inflation']
+    ax_main.legend(handles, labels, loc='upper right', bbox_to_anchor=(1, 1))
+    
+    # Economic indicators subplot
+    ax_indicators = fig.add_subplot(gs[1, :2])
+    
+    # Plot GDP and PCE on same chart with dual y-axis
+    ax_gdp = ax_indicators
+    ax_pce = ax_indicators.twinx()
+    
+    # GDP line
+    line1 = ax_gdp.plot(df_clean['Date'], df_clean['US_GDP_QoQ_Ann'], 
+                       color='steelblue', linewidth=2, label='GDP Growth (QoQ Ann.)')
+    ax_gdp.set_ylabel('GDP Growth (%)', color='steelblue', fontsize=10)
+    ax_gdp.tick_params(axis='y', labelcolor='steelblue')
+    
+    # PCE line  
+    line2 = ax_pce.plot(df_clean['Date'], df_clean['PCE_Prices'], 
+                       color='orangered', linewidth=2, label='PCE Inflation')
+    ax_pce.set_ylabel('PCE Inflation (%)', color='orangered', fontsize=10)
+    ax_pce.tick_params(axis='y', labelcolor='orangered')
+    
+    ax_indicators.set_xlabel('Year', fontsize=10)
+    ax_indicators.set_title('Economic Indicators', fontsize=12, fontweight='bold')
+    ax_indicators.grid(True, alpha=0.3)
+    
+    # Combined legend for indicators
+    lines = line1 + line2
+    labels = [l.get_label() for l in lines]
+    ax_indicators.legend(lines, labels, loc='upper left')
+    
+    # Pie chart for regime distribution
+    ax_pie = fig.add_subplot(gs[1, 2])
+    
+    regime_counts = df_clean['Regime'].value_counts()
+    colors = [regime_colors[regime] for regime in regime_counts.index]
+    
+    wedges, texts, autotexts = ax_pie.pie(regime_counts.values, labels=None, autopct='%1.1f%%',
+                                         colors=colors, startangle=90)
+    
+    # Make percentage text smaller and white
+    for autotext in autotexts:
+        autotext.set_color('white')
+        autotext.set_fontsize(8)
+        autotext.set_fontweight('bold')
+    
+    ax_pie.set_title('Regime\nDistribution', fontsize=11, fontweight='bold')
+    
+    # Add pie chart legend with short names
+    short_labels = ['Rise/Fall', 'Rise/Rise', 'Slow/Rise', 'Slow/Fall']
+    ax_pie.legend(wedges, short_labels, title="Regimes", loc="center left", 
+                 bbox_to_anchor=(1, 0, 0.5, 1), fontsize=8)
     
     plt.tight_layout()
     
     if save_plot:
         plt.savefig('economic_regimes_analysis.png', dpi=300, bbox_inches='tight')
-        print(f"\n📈 Chart saved as 'economic_regimes_analysis.png'")
+        print(f"\nChart saved as 'economic_regimes_analysis.png'")
     
-    plt.show()
+    # plt.show()  # Comment out for non-interactive execution
 
 def export_regime_data(df, output_file='economic_regimes_classified.csv'):
     """
@@ -152,7 +200,7 @@ def export_regime_data(df, output_file='economic_regimes_classified.csv'):
     # Select relevant columns for export
     export_df = df[['Date', 'US_GDP_QoQ_Ann', 'PCE_Prices', 'GDP_Trend', 'PCE_Trend', 'Regime']].copy()
     export_df.to_csv(output_file, index=False)
-    print(f"💾 Classified data exported to: {output_file}")
+    print(f"Classified data exported to: {output_file}")
 
 def export_dates_regimes_only(df, output_file='dates_and_regimes.csv'):
     """
@@ -168,10 +216,10 @@ def export_dates_regimes_only(df, output_file='dates_and_regimes.csv'):
     simple_df = simple_df[simple_df['Regime'] != 'Insufficient Data']
     
     simple_df.to_csv(output_file, index=False)
-    print(f"📅 Dates and regimes exported to: {output_file}")
+    print(f"Dates and regimes exported to: {output_file}")
     
     # Show preview
-    print(f"\n📋 Preview of {output_file}:")
+    print(f"\nPreview of {output_file}:")
     print(simple_df.tail(10).to_string(index=False))
 
 # Main execution
@@ -179,7 +227,7 @@ if __name__ == "__main__":
     # File paths
     input_csv = "economic_data_extracted.csv"  # From previous script
     
-    print("🏛️  Economic Regime Classification Model")
+    print("Economic Regime Classification Model")
     print("=" * 50)
     
     # Classify regimes
@@ -193,7 +241,7 @@ if __name__ == "__main__":
         export_regime_data(classified_data)
         export_dates_regimes_only(classified_data)
         
-        print(f"\n✅ Analysis complete! Use the classified data for:")
+        print(f"\nAnalysis complete! Use the classified data for:")
         print("   • Tactical asset allocation")
         print("   • Sector rotation strategies") 
         print("   • Risk management frameworks")

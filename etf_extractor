@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 def extract_performance_data():
     """
-    Extract performance data from 9 iShares ETF Excel files and consolidate into one DataFrame
+    Extract performance data from 15 iShares ETF Excel files and consolidate into one DataFrame
     """
     
     # List of file names
@@ -22,7 +22,13 @@ def extract_performance_data():
         "iShares-MSCI-EAFE-Min-Vol-Factor-ETF_fund.xlsx",
         "iShares-Edge-MSCI-World-Momentum-Factor-UCITS-ETF-USD-Acc_fund.xlsx",
         "iShares-MSCI-USA-Min-Vol-Factor-ETF_fund.xlsx",
-        "iShares-Edge-MSCI-Europe-Momentum-Factor-UCITS-ETF-EUR-Acc_fund.xlsx"
+        "iShares-Edge-MSCI-Europe-Momentum-Factor-UCITS-ETF-EUR-Acc_fund.xlsx",
+        "iShares-MSCI-USA-Quality-Factor-ETF_fund.xlsx",
+        "iShares-Edge-MSCI-Europe-Minimum-Volatility-UCITS-ETF-EUR-A_fund.xlsx",
+        "iShares-Edge-MSCI-World-Minimum-Volatility-UCITS-ETF-USD-Ac_fund.xlsx",
+        "iShares-MSCI-Global-Min-Vol-Factor-ETF_fund.xlsx",
+        "iShares-MSCI-USA-Equal-Weighted-ETF_fund.xlsx",
+        "iShares-Russell-2000-ETF_fund.xlsx"
     ]
     
     # Dictionary to store data from each file
@@ -38,9 +44,10 @@ def extract_performance_data():
                 logger.warning(f"File not found: {file_name}")
                 continue
             
-            # Read Excel file
+            # Read Excel file (handle both .xlsx and .xls formats)
             try:
-                excel_file = pd.ExcelFile(file_name, engine='openpyxl')
+                engine = 'openpyxl' if file_name.endswith('.xlsx') else 'xlrd'
+                excel_file = pd.ExcelFile(file_name, engine=engine)
             except Exception as e:
                 logger.error(f"Cannot read Excel file {file_name}: {str(e)}")
                 continue
@@ -53,7 +60,8 @@ def extract_performance_data():
             # Read the Performance sheet
             try:
                 # Read from row 4 (0-indexed) which corresponds to row 5 in Excel
-                df = pd.read_excel(file_name, sheet_name='Performance', engine='openpyxl', 
+                engine = 'openpyxl' if file_name.endswith('.xlsx') else 'xlrd'
+                df = pd.read_excel(file_name, sheet_name='Performance', engine=engine, 
                                  header=4, usecols=[0, 1])
                 
                 # Check if we have the expected columns
@@ -80,7 +88,7 @@ def extract_performance_data():
                 df['Date'] = df['Month End Date'].apply(convert_date)
                 
                 # Clean fund name for column naming (remove file extension and simplify)
-                fund_name = file_name.replace('.xlsx', '').replace('iShares-', '').replace('_fund', '')
+                fund_name = file_name.replace('.xlsx', '').replace('.xls', '').replace('iShares-', '').replace('_fund', '')
                 
                 # Store the data with cleaned fund name as column
                 df_clean = df[['Date', 'Monthly Total (NAV) Return']].copy()

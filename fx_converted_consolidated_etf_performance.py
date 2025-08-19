@@ -159,10 +159,10 @@ def analyze_currency_impact(conversion_df):
 
 # Example usage
 if __name__ == "__main__":
-    # File paths - update these to match your file locations
-    etf_file = "consolidated_etf_performance.csv"
-    forex_file = "eurusd_historical_data.csv"
-    output_file = "consolidated_etf_performance_with_usd.csv"
+    # File paths - these should match your current file structure
+    etf_file = "consolidated_etf_performance.csv"  # Raw ETF data (input)
+    forex_file = "eurusd_historical_data.csv"     # EUR/USD historical data
+    output_file = "consolidated_etf_performance_with_usd.csv"  # USD-converted data (output)
     
     # Convert the data
     complete_df, conversion_df = convert_eur_etf_to_usd(etf_file, forex_file, output_file)
